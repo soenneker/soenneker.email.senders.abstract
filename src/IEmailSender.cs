@@ -24,7 +24,7 @@ public interface IEmailSender
     /// <returns>
     /// A task representing the asynchronous operation, with a boolean indicating whether sending was successful.
     /// </returns>
-    Task<bool> Send(string messageContent, Type? type, CancellationToken cancellationToken = default);
+    Task<bool> Send(string messageContent, Type type, CancellationToken cancellationToken = default);
 
     Task<bool> Send(EmailMessage message, CancellationToken cancellationToken = default);
 }
