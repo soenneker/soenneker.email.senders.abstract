@@ -44,6 +44,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Soenneker.Messages.Email" Version="4.0.385" />
+        <PackageReference Include="Soenneker.Messages.Email" Version="4.0.386" />
     </ItemGroup>
 </Project>
