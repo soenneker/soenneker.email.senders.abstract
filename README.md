@@ -5,7 +5,7 @@
 
 # Soenneker.Email.Senders.Abstract
 
-Interface for sending emails based on a raw service bus message content and its associated type. Wraps logic for rendering templates, transforming content.
+Defines `IEmailSender`, the shared contract implemented by SMTP, Resend, and other email-delivery adapters.
 
 ## Install
 
@@ -13,28 +13,48 @@ Interface for sending emails based on a raw service bus message content and its 
 dotnet add package Soenneker.Email.Senders.Abstract
 ```
 
-## Quick start
+## Send a structured message
 
 ```csharp
 using Soenneker.Email.Senders.Abstract;
+using Soenneker.Enums.Email.Format;
+using Soenneker.Enums.Email.Priority;
+using Soenneker.Messages.Email;
 
 IEmailSender emailSender = /* resolve from DI */;
-var result = await emailSender.Send("value", "value", default);
+
+var message = new EmailMessage
+{
+    Type = "email.receipt.v1",
+    Id = Guid.NewGuid().ToString("N"),
+    Queue = "email",
+    Sender = "orders-api",
+    CreatedAt = DateTimeOffset.UtcNow,
+    To = ["recipient@example.net"],
+    Subject = "Your receipt",
+    Format = EmailFormat.Html,
+    Priority = EmailPriority.Normal,
+    ContentFileName = "receipt.html"
+};
+
+bool sent = await emailSender.Send(message, cancellationToken);
 ```
 
-Sends an email using the given raw message content and type.
+## Send transport content
 
-## What you get
+Consumers such as queue receptors can pass serialized `EmailMessage` content without deserializing it first:
 
-- `IEmailSender` — Interface for sending emails based on a raw service bus message content and its associated type. Wraps logic for rendering templates, transforming content.
+```csharp
+bool sent = await emailSender.Send(
+    messageContent,
+    transportType,
+    cancellationToken);
+```
 
-## API at a glance
+`messageContent` is expected to contain a serialized `EmailMessage`. `transportType` is the message type identifier supplied by the transport; it is not necessarily a CLR type name, and each implementation decides whether to use it for routing or validation.
 
-| API | What it does | Result / important behavior |
-| --- | --- | --- |
-| `IEmailSender.Send(messageContent, type, cancellationToken)` | Sends an email using the given raw message content and type. | A task representing the asynchronous operation, with a boolean indicating whether sending was successful. |
-| `IEmailSender.Send(message, cancellationToken)` | Sends the specified email message asynchronously. | A task that represents the asynchronous send operation. The task result is `true` if the message was sent successfully; otherwise, `false`. |
+## Result contract
 
-## Practical notes
+`true` means the implementation reports that it completed its delivery handoff. `false` means it deliberately did not send, commonly because delivery is disabled or a provider rejected the request. Rendering, configuration, serialization, transport, and provider failures may instead be raised as exceptions; consult the concrete sender's documentation.
 
-- Cancellation stops pending work; it does not undo work that has already completed.
+Cancellation stops pending work when the implementation observes the token. It cannot recall a message already accepted by a delivery provider.
